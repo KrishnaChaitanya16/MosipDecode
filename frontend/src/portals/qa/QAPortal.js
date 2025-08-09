@@ -16,7 +16,7 @@ import {
   Scale,
   Package
 } from 'lucide-react';
-import QANavbar from './QANavbar';
+// Removed local portal navbar to use global Navbar
 import './QAPortal.css';
 
 const QAPortal = () => {
@@ -151,7 +151,6 @@ const QAPortal = () => {
 
   return (
     <div className="qa-portal">
-      <QANavbar />
       <div className="container">
         <motion.div
           className="portal-header"

@@ -3,10 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, Leaf, Shield, Users, QrCode } from 'lucide-react';
 import './Navbar.css';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { isAuthenticated, user, logout } = useAuth();
 
   const navItems = [
     { path: '/', label: 'Home', icon: Leaf },
@@ -15,6 +17,19 @@ const Navbar = () => {
     { path: '/buyer', label: 'Buyer Portal', icon: Users },
     { path: '/scanner', label: 'QR Scanner', icon: QrCode },
   ];
+
+  const roleToPortalPath = (role) => {
+    if (role === 'exporter') return '/farmer';
+    if (role === 'qa_agency') return '/qa';
+    if (role === 'importer') return '/buyer';
+    return '/';
+  };
+
+  const displayedNavItems = (() => {
+    if (!isAuthenticated) return navItems;
+    const portalPath = roleToPortalPath(user?.role);
+    return navItems.filter(item => item.path === '/' || item.path === '/scanner' || item.path === portalPath);
+  })();
 
   const isActive = (path) => location.pathname === path;
 
@@ -34,7 +49,7 @@ const Navbar = () => {
 
         <div className="navbar-menu">
           <ul className="nav-list">
-            {navItems.map((item) => {
+            {displayedNavItems.map((item) => {
               const Icon = item.icon;
               return (
                 <motion.li key={item.path} className="nav-item">
@@ -57,6 +72,21 @@ const Navbar = () => {
                 </motion.li>
               );
             })}
+            {!isAuthenticated && (
+              <li className="nav-item">
+                <Link className={`nav-link ${location.pathname === '/login' ? 'active' : ''}`} to="/login">Login</Link>
+              </li>
+            )}
+            {!isAuthenticated && (
+              <li className="nav-item">
+                <Link className={`nav-link ${location.pathname === '/signup' ? 'active' : ''}`} to="/signup">Signup</Link>
+              </li>
+            )}
+            {isAuthenticated && (
+              <li className="nav-item">
+                <button className="nav-link" onClick={logout}>Logout</button>
+              </li>
+            )}
           </ul>
         </div>
 
@@ -76,7 +106,7 @@ const Navbar = () => {
         transition={{ duration: 0.3 }}
       >
         <ul className="mobile-nav-list">
-          {navItems.map((item) => {
+          {displayedNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <li key={item.path} className="mobile-nav-item">
@@ -91,6 +121,21 @@ const Navbar = () => {
               </li>
             );
           })}
+          {!isAuthenticated && (
+            <li className="mobile-nav-item">
+              <Link to="/login" className={`mobile-nav-link ${location.pathname === '/login' ? 'active' : ''}`} onClick={() => setIsOpen(false)}>Login</Link>
+            </li>
+          )}
+          {!isAuthenticated && (
+            <li className="mobile-nav-item">
+              <Link to="/signup" className={`mobile-nav-link ${location.pathname === '/signup' ? 'active' : ''}`} onClick={() => setIsOpen(false)}>Signup</Link>
+            </li>
+          )}
+          {isAuthenticated && (
+            <li className="mobile-nav-item">
+              <button className="mobile-nav-link" onClick={() => { logout(); setIsOpen(false); }}>Logout</button>
+            </li>
+          )}
         </ul>
       </motion.div>
     </nav>

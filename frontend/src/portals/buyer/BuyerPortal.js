@@ -16,7 +16,7 @@ import {
   QrCode,
   X
 } from 'lucide-react';
-import BuyerNavbar from './BuyerNavbar';
+// Removed local portal navbar to use global Navbar
 import QRScanner from './QRScanner';
 import './BuyerPortal.css';
 
@@ -115,7 +115,6 @@ const BuyerPortal = () => {
 
   return (
     <div className="buyer-portal">
-      <BuyerNavbar activeView={activeView} setActiveView={setActiveView} />
       <div className="container">
         <AnimatePresence mode="wait">
           {activeView === 'products' ? (

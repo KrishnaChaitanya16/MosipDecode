@@ -22,7 +22,7 @@ import {
   AlertCircle,
   Loader
 } from 'lucide-react';
-import FarmerNavbar from './FarmerNavbar';
+import { useAuth } from '../../contexts/AuthContext';
 import './FarmerPortal.css';
 
 const FarmerPortal = () => {
@@ -33,70 +33,14 @@ const FarmerPortal = () => {
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-  
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: 'Premium Basmati Rice',
-      type: 'Rice',
-      quantity: '1000 kg',
-      location: 'Punjab, India',
-      uploadDate: '2024-01-15',
-      status: 'verified',
-      quality: 'Excellent',
-      price: 2.50,
-      currency: 'USD',
-      unit: 'kg',
-      description: 'High-quality basmati rice with excellent aroma and texture.',
-      rating: 4.8,
-      views: 245,
-      revenue: 2500
-    },
-    {
-      id: 2,
-      name: 'Organic Wheat',
-      type: 'Wheat',
-      quantity: '500 kg',
-      location: 'Haryana, India',
-      uploadDate: '2024-01-10',
-      status: 'uploaded',
-      quality: null,
-      price: 1.80,
-      currency: 'USD',
-      unit: 'kg',
-      description: 'Certified organic wheat suitable for premium bread making.',
-      rating: 4.5,
-      views: 156,
-      revenue: 0
-    },
-    {
-      id: 3,
-      name: 'Black Pepper',
-      type: 'Spices',
-      quantity: '200 kg',
-      location: 'Kerala, India',
-      uploadDate: '2024-01-08',
-      status: 'purchased',
-      quality: 'Good',
-      price: 8.50,
-      currency: 'USD',
-      unit: 'kg',
-      description: 'Premium black pepper with high piperine content.',
-      rating: 4.9,
-      views: 312,
-      revenue: 1700
-    }
-  ]);
+  const { token } = useAuth();
+  const [products, setProducts] = useState([]);
 
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    type: '',
+    product_type: '',
     quantity: '',
-    location: '',
-    price: '',
-    currency: 'USD',
-    unit: 'kg',
-    description: ''
+    origin_location: '',
+    destination: ''
   });
 
   const [stats, setStats] = useState({
@@ -109,11 +53,38 @@ const FarmerPortal = () => {
   useEffect(() => {
     setStats({
       totalProducts: products.length,
-      totalRevenue: products.reduce((sum, p) => sum + (p.revenue || 0), 0),
-      averageRating: products.reduce((sum, p) => sum + (p.rating || 0), 0) / products.length,
-      totalViews: products.reduce((sum, p) => sum + (p.views || 0), 0)
+      totalRevenue: 0,
+      averageRating: 0,
+      totalViews: 0
     });
   }, [products]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:3001/api'}/products`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load products');
+        const mapped = data.map((row) => ({
+          id: row.id,
+          name: row.product_type,
+          type: row.product_type,
+          quantity: row.quantity,
+          location: row.origin_location,
+          uploadDate: row.submission_date,
+          status: (row.status || 'Submitted').toLowerCase(),
+          description: row.destination ? `Destination: ${row.destination}` : ''
+        }));
+        setProducts(mapped);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+      }
+    };
+    if (token) fetchProducts();
+  }, [token]);
 
   const getStatusIcon = (status) => {
     const iconProps = { className: "status-icon", size: 18 };
@@ -143,48 +114,51 @@ const FarmerPortal = () => {
   const handleUpload = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const product = {
-      id: Date.now(),
-      ...newProduct,
-      price: parseFloat(newProduct.price),
-      uploadDate: new Date().toISOString().split('T')[0],
-      status: 'uploaded',
-      quality: null,
-      rating: 0,
-      views: 0,
-      revenue: 0
-    };
-    
-    setProducts([product, ...products]);
-    setNewProduct({
-      name: '',
-      type: '',
-      quantity: '',
-      location: '',
-      price: '',
-      currency: 'USD',
-      unit: 'kg',
-      description: ''
-    });
-    setShowUploadForm(false);
-    setIsLoading(false);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:3001/api'}/batches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          product_type: newProduct.product_type,
+          quantity: newProduct.quantity,
+          origin_location: newProduct.origin_location,
+          destination: newProduct.destination
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit');
+      const b = data.batch;
+      const mapped = {
+        id: b.id,
+        name: b.product_type,
+        type: b.product_type,
+        quantity: b.quantity,
+        location: b.origin_location,
+        uploadDate: b.submission_date,
+        status: (b.status || 'Submitted').toLowerCase(),
+        description: b.destination ? `Destination: ${b.destination}` : ''
+      };
+      setProducts(prev => [mapped, ...prev]);
+      setNewProduct({ product_type: '', quantity: '', origin_location: '', destination: '' });
+      setShowUploadForm(false);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEdit = (product) => {
     setEditingProduct(product);
     setNewProduct({
-      name: product.name,
-      type: product.type,
+      product_type: product.type,
       quantity: product.quantity,
-      location: product.location,
-      price: product.price.toString(),
-      currency: product.currency,
-      unit: product.unit,
-      description: product.description
+      origin_location: product.location,
+      destination: ''
     });
     setShowUploadForm(true);
   };
@@ -208,7 +182,6 @@ const FarmerPortal = () => {
 
   return (
     <div className="farmer-portal">
-      <FarmerNavbar />
       <div className="container">
         {/* Header */}
         <motion.div
@@ -290,27 +263,16 @@ const FarmerPortal = () => {
               transition={{ duration: 0.3 }}
             >
               <div className="section-header">
-                <h2>{editingProduct ? 'Edit Product' : 'Upload New Product'}</h2>
+                <h2>{editingProduct ? 'Edit Product' : 'Submit New Product Batch'}</h2>
               </div>
               <form className="upload-form" onSubmit={handleUpload}>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label htmlFor="name">Product Name</label>
-                    <input
-                      type="text"
-                      id="name"
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      required
-                      placeholder="Enter product name"
-                    />
-                  </div>
-                  <div className="form-group">
                     <label htmlFor="type">Product Type</label>
                     <select
                       id="type"
-                      value={newProduct.type}
-                      onChange={(e) => setNewProduct({...newProduct, type: e.target.value})}
+                      value={newProduct.product_type}
+                      onChange={(e) => setNewProduct({...newProduct, product_type: e.target.value})}
                       required
                     >
                       <option value="">Select Type</option>
@@ -336,59 +298,24 @@ const FarmerPortal = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="location">Location</label>
+                    <label htmlFor="origin">Origin Location</label>
                     <input
                       type="text"
-                      id="location"
+                      id="origin"
                       placeholder="e.g., Punjab, India"
-                      value={newProduct.location}
-                      onChange={(e) => setNewProduct({...newProduct, location: e.target.value})}
+                      value={newProduct.origin_location}
+                      onChange={(e) => setNewProduct({...newProduct, origin_location: e.target.value})}
                       required
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="price">Price</label>
-                    <div className="price-input-group">
-                      <select
-                        value={newProduct.currency}
-                        onChange={(e) => setNewProduct({...newProduct, currency: e.target.value})}
-                        className="currency-select"
-                      >
-                        <option value="USD">USD</option>
-                        <option value="INR">INR</option>
-                        <option value="EUR">EUR</option>
-                      </select>
-                      <input
-                        type="number"
-                        id="price"
-                        placeholder="0.00"
-                        step="0.01"
-                        value={newProduct.price}
-                        onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
-                        required
-                        className="price-input"
-                      />
-                      <select
-                        value={newProduct.unit}
-                        onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
-                        className="unit-select"
-                      >
-                        <option value="kg">per kg</option>
-                        <option value="lb">per lb</option>
-                        <option value="ton">per ton</option>
-                        <option value="piece">per piece</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-group full-width">
-                    <label htmlFor="description">Description</label>
-                    <textarea
-                      id="description"
-                      rows="4"
-                      placeholder="Describe your product quality, features, certifications, etc."
-                      value={newProduct.description}
-                      onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                      required
+                    <label htmlFor="destination">Destination</label>
+                    <input
+                      type="text"
+                      id="destination"
+                      placeholder="e.g., Dubai, UAE"
+                      value={newProduct.destination}
+                      onChange={(e) => setNewProduct({...newProduct, destination: e.target.value})}
                     />
                   </div>
                 </div>
@@ -399,23 +326,14 @@ const FarmerPortal = () => {
                     onClick={() => {
                       setShowUploadForm(false);
                       setEditingProduct(null);
-                      setNewProduct({
-                        name: '',
-                        type: '',
-                        quantity: '',
-                        location: '',
-                        price: '',
-                        currency: 'USD',
-                        unit: 'kg',
-                        description: ''
-                      });
+                      setNewProduct({ product_type: '', quantity: '', origin_location: '', destination: '' });
                     }}
                   >
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={isLoading}>
                     {isLoading ? <Loader className="btn-icon animate-spin" /> : <Upload className="btn-icon" />}
-                    {isLoading ? 'Processing...' : (editingProduct ? 'Update Product' : 'Upload Product')}
+                    {isLoading ? 'Processing...' : (editingProduct ? 'Update Batch' : 'Submit Batch')}
                   </button>
                 </div>
               </form>
@@ -568,8 +486,8 @@ const FarmerPortal = () => {
                     <div className="product-stats">
                       <div className="stat-item">
                         <DollarSign size={14} />
-                        <span className="price">
-                          {product.currency} {product.price.toFixed(2)}/{product.unit}
+                          <span className="price">
+                          {product.currency} {Number(product.price || 0).toFixed(2)}/{product.unit}
                         </span>
                       </div>
                       {product.rating > 0 && (

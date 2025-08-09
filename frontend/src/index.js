@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+// Navbar is rendered inside App via routing
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
