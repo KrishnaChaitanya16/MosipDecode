@@ -33,12 +33,10 @@ CREATE TABLE IF NOT EXISTS inspections (
   batch_id INTEGER NOT NULL,
   qa_agency_id INTEGER NOT NULL,
   inspection_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  moisture_level DECIMAL(5,2),
-  pesticide_content DECIMAL(5,2),
-  is_organic BOOLEAN,
-  iso_code VARCHAR(50),
+  parameters JSONB NOT NULL DEFAULT '{}',
   remarks TEXT
 );
+
 
 CREATE TABLE IF NOT EXISTS verifiable_credentials (
   id SERIAL PRIMARY KEY,
