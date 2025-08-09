@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const batchRoutes = require('./routes/batchRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 
 
@@ -12,6 +13,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use ('/api/batches', batchRoutes);
+app.use ('/api/users', userRoutes);
 
 
 
